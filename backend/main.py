@@ -195,7 +195,7 @@ async def tick() -> Dict[str, str]:
 # Run (if executed directly)
 # -----------------------------
 
-# Use: uvicorn main:app --reload
+# Use: uvicorn main:app --reload // or python -m uvicorn main:app --reload
 if __name__ == "__main__":
     import uvicorn
 
