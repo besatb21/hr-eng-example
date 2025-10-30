@@ -187,8 +187,6 @@ def seed_data(session: Session):
 #     STATE["orders"] = list(SEED_ORDERS)
 #     STATE["robots"] = list(SEED_ROBOTS)
 
-
-
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
@@ -200,6 +198,13 @@ def on_startup():
 @app.get("/healthz")
 async def healthz():
     return {"ok": True}
+
+
+@app.get("/reset", tags=["simulation"])
+async def reset(session: Session = Depends(get_session)):
+    seed_data(session=session)
+    return {"ok": True}
+
 
 @app.post("/addOrder", response_model=Order, tags=["orders"])
 async def add_order(req: AddOrderRequest,  session: Session = Depends(get_session)) -> Order:
