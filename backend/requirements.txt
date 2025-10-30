@@ -1,4 +1,8 @@
+sqlmodel
 fastapi==0.115.12
 pydantic==2.11.5
 Requests==2.32.4
 uvicorn==0.34.3
+
+SQLAlchemy==2.0.13
+alembic==1.11.1
