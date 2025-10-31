@@ -1,6 +1,5 @@
 import heapq
 import json
-from ast import increment_lineno
 from enum import Enum
 # -----------------------------
 # Persistence With SQLite Setup
@@ -8,7 +7,6 @@ from enum import Enum
 from typing import Annotated
 from typing import Dict, List, Tuple, Optional
 
-from alembic.operations.toimpl import drop_table
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -47,8 +45,7 @@ class Order(SQLModel, table=True):
 class RouteOrderLink(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     route_json: str
-    order_id: int = Field(
-        default=None, foreign_key="order.id")
+    order_id: int = Field(default=None, foreign_key="order.id")
     distance: int
 
 
@@ -99,8 +96,9 @@ class AddOrderRequest(BaseModel):
     source: str
     target: str
 
+
 class AssignOrderRequest(BaseModel):
-    name : str
+    name: str
     source: str
 
 
@@ -129,55 +127,32 @@ class RetrieveRobotRequest(BaseModel):
 # -----------------------------
 
 
-GRAPH: Graph = Graph(
-    nodes=["A", "B", "C", "D", "E", "F"],
-    edges=[
-        Edge(**{"from_": "A", "to": "B", "weight": 1}),
-        Edge(**{"from_": "B", "to": "C", "weight": 2}),
-        Edge(**{"from_": "C", "to": "D", "weight": 2}),
-        Edge(**{"from_": "B", "to": "E", "weight": 3}),
-        Edge(**{"from_": "E", "to": "F", "weight": 1}),
-        Edge(**{"from_": "D", "to": "F", "weight": 2}),
+GRAPH: Graph = Graph(nodes=["A", "B", "C", "D", "E", "F"],
+    edges=[Edge(**{"from_": "A", "to": "B", "weight": 1}), Edge(**{"from_": "B", "to": "C", "weight": 2}),
+        Edge(**{"from_": "C", "to": "D", "weight": 2}), Edge(**{"from_": "B", "to": "E", "weight": 3}),
+        Edge(**{"from_": "E", "to": "F", "weight": 1}), Edge(**{"from_": "D", "to": "F", "weight": 2}),
         # Treat edges as undirected for simplicity; callers may add both directions explicitly if desired
-    ],
-)
+    ], )
 
-SEED_ROBOTS = [
-    Robot(name="R1", status=RobotStatus.IDLE, node="A"),
-    Robot(name="R2", status=RobotStatus.EXECUTING, node="C"),
-    Robot(name="R3", status=RobotStatus.IDLE, node="E"),
-]
+SEED_ROBOTS = [Robot(name="R1", status=RobotStatus.IDLE, node="A"),
+    Robot(name="R2", status=RobotStatus.EXECUTING, node="C"), Robot(name="R3", status=RobotStatus.IDLE, node="E"), ]
 
-SEED_ORDERS = [
-    Order(name="O-1001", source="B", target="D", status=OrderStatus.NEW),
-]
+SEED_ORDERS = [Order(name="O-1001", source="B", target="D", status=OrderStatus.NEW), ]
 
 # -----------------------------
 # App Setup
 # -----------------------------
 
-app = FastAPI(
-    title="AGV Scheduling Exercise API",
-    version="0.1.0",
-    description=(
-        "Minimal backend stubs for the AGV fleet scheduling exercise.\n\n"
-        "Endpoints provided: /addOrder, /getOrders, /getGraph, /getRobots.\n"
-        "State is in-memory and resets on restart."
-    ),
-)
+app = FastAPI(title="AGV Scheduling Exercise API", version="0.1.0",
+    description=("Minimal backend stubs for the AGV fleet scheduling exercise.\n\n"
+                 "Endpoints provided: /addOrder, /getOrders, /getGraph, /getRobots.\n"
+                 "State is in-memory and resets on restart."), )
 
 # CORS for local dev frontends (Vite/Next/CRA)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite default
-        "http://localhost:3000",  # CRA/Next.js
-        "*",  # loosen for exercise; tighten for prod
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173",  # Vite default
+    "http://localhost:3000",  # CRA/Next.js
+    "*",  # loosen for exercise; tighten for prod
+], allow_credentials=True, allow_methods=["*"], allow_headers=["*"], )
 
 
 # -----------------------------
@@ -303,6 +278,7 @@ async def get_orders(session: Session = Depends(get_session)):
 async def get_robots(session: Session = Depends(get_session)):
     return session.exec(select(Robot)).all()
 
+
 @app.get("/getGraph", response_model=Graph, tags=["graph"])
 async def get_graph() -> Graph:
     return GRAPH
@@ -327,8 +303,7 @@ async def assign_nearest_idle_robot(order: AssignOrderRequest, session: Session 
     assigned_order.status = OrderStatus.IN_PROGRESS
     assigned_robot = session.exec(select(Robot).where(Robot.id == chosen_robot.id)).first()
     assigned_robot.status = RobotStatus.EXECUTING
-    order_path = RouteOrderLink(
-            route_json=json.dumps(path), order_id=assigned_order.id, distance=len(path))
+    order_path = RouteOrderLink(route_json=json.dumps(path), order_id=assigned_order.id, distance=len(path))
 
     session.add(assigned_order)
     session.add(assigned_robot)
