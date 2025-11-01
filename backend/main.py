@@ -286,6 +286,10 @@ async def get_graph() -> Graph:
 
 @app.post("/assignNearestIdleRobot", tags=["scheduling"])
 async def assign_nearest_idle_robot(order: AssignOrderRequest, session: Session = Depends(get_session)):
+    # todo validate order exists
+    assigned_order = session.exec(select(Order).where(Order.name == order.name)).first()
+    if not assigned_order:
+        raise HTTPException(status_code=404, detail="Order not found")
     robots = list(session.exec(select(Robot)).all())
 
     path_for_robot = []
@@ -299,7 +303,6 @@ async def assign_nearest_idle_robot(order: AssignOrderRequest, session: Session 
 
     resulting_path = sorted(path_for_robot, key=lambda x: (x["distance"], x["robot"].name))[0]
     chosen_robot, path = resulting_path["robot"], resulting_path["path"]
-    assigned_order = session.exec(select(Order).where(Order.name == order.name)).first()
     assigned_order.status = OrderStatus.IN_PROGRESS
     assigned_robot = session.exec(select(Robot).where(Robot.id == chosen_robot.id)).first()
     assigned_robot.status = RobotStatus.EXECUTING
