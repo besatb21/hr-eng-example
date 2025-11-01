@@ -35,3 +35,33 @@ def test_no_idle_robot_available():
     assert data["detail"] == "No idle robot available"
 
 
+
+
+def test_add_order():
+    client.get('/reset/')
+    response = client.post(
+        "/addOrder/", json={"name": "testOrder", "source": "A", "target": "C"}
+    )
+    data = response.json()
+
+    assert response.status_code == 200
+    assert data["id"]== 2
+    assert data["name"] == "testOrder"
+    assert data["source"] == "A"
+    assert data["target"] == "C"
+    assert data["status"] == "NEW"
+
+
+def test_add_same_name_order():
+    client.get('/reset/')
+    client.post(
+        "/addOrder/", json={"name": "besa", "source": "A", "target": "C"}
+    )
+    response = client.post(
+        "/addOrder/", json={"name": "besa", "source": "B", "target": "D"}
+    )
+    data = response.json()
+
+    assert response.status_code == 409
+    assert data["detail"] == "Order with this name already exists"
+
