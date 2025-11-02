@@ -46,6 +46,7 @@ class RouteOrderLink(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     route_json: str
     order_id: int = Field(default=None, foreign_key="order.id")
+    robot_id: int = Field(default=None, foreign_key="robot.id")
     distance: int
 
 
@@ -127,15 +128,16 @@ class RetrieveRobotRequest(BaseModel):
 # -----------------------------
 
 
-GRAPH: Graph = Graph(nodes=["A", "B", "C", "D", "E", "F"],
-    edges=[Edge(**{"from_": "A", "to": "B", "weight": 1}), Edge(**{"from_": "B", "to": "C", "weight": 2}),
-        Edge(**{"from_": "C", "to": "D", "weight": 2}), Edge(**{"from_": "B", "to": "E", "weight": 3}),
-        Edge(**{"from_": "E", "to": "F", "weight": 1}), Edge(**{"from_": "D", "to": "F", "weight": 2}),
-        # Treat edges as undirected for simplicity; callers may add both directions explicitly if desired
-    ], )
+GRAPH: Graph = Graph(nodes=["A", "B", "C", "D", "E", "F"], edges=[Edge(**{"from_": "A", "to": "B", "weight": 1}),
+    Edge(**{"from_": "B", "to": "C", "weight": 2}), Edge(**{"from_": "C", "to": "D", "weight": 2}),
+    Edge(**{"from_": "B", "to": "E", "weight": 3}), Edge(**{"from_": "E", "to": "F", "weight": 1}),
+    Edge(**{"from_": "D", "to": "F", "weight": 2}),
+    # Treat edges as undirected for simplicity; callers may add both directions explicitly if desired
+], )
 
 SEED_ROBOTS = [Robot(name="R1", status=RobotStatus.IDLE, node="A"),
-    Robot(name="R2", status=RobotStatus.EXECUTING, node="C"), Robot(name="R3", status=RobotStatus.IDLE, node="E"), ]
+               Robot(name="R2", status=RobotStatus.EXECUTING, node="C"),
+               Robot(name="R3", status=RobotStatus.IDLE, node="E"), ]
 
 SEED_ORDERS = [Order(name="O-1001", source="B", target="D", status=OrderStatus.NEW), ]
 
@@ -144,15 +146,15 @@ SEED_ORDERS = [Order(name="O-1001", source="B", target="D", status=OrderStatus.N
 # -----------------------------
 
 app = FastAPI(title="AGV Scheduling Exercise API", version="0.1.0",
-    description=("Minimal backend stubs for the AGV fleet scheduling exercise.\n\n"
-                 "Endpoints provided: /addOrder, /getOrders, /getGraph, /getRobots.\n"
-                 "State is in-memory and resets on restart."), )
+              description=("Minimal backend stubs for the AGV fleet scheduling exercise.\n\n"
+                           "Endpoints provided: /addOrder, /getOrders, /getGraph, /getRobots.\n"
+                           "State is in-memory and resets on restart."), )
 
 # CORS for local dev frontends (Vite/Next/CRA)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173",  # Vite default
-    "http://localhost:3000",  # CRA/Next.js
-    "*",  # loosen for exercise; tighten for prod
-], allow_credentials=True, allow_methods=["*"], allow_headers=["*"], )
+                                                  "http://localhost:3000",  # CRA/Next.js
+                                                  "*",  # loosen for exercise; tighten for prod
+                                                  ], allow_credentials=True, allow_methods=["*"], allow_headers=["*"], )
 
 
 # -----------------------------
@@ -306,7 +308,8 @@ async def assign_nearest_idle_robot(order: AssignOrderRequest, session: Session 
     assigned_order.status = OrderStatus.IN_PROGRESS
     assigned_robot = session.exec(select(Robot).where(Robot.id == chosen_robot.id)).first()
     assigned_robot.status = RobotStatus.EXECUTING
-    order_path = RouteOrderLink(route_json=json.dumps(path), order_id=assigned_order.id, distance=len(path))
+    order_path = RouteOrderLink(route_json=json.dumps(path), order_id=assigned_order.id, robot_id=assigned_robot.id,
+                                distance=len(path))
 
     session.add(assigned_order)
     session.add(assigned_robot)
@@ -336,8 +339,24 @@ async def get_routes() -> RoutesResponse:
 
 
 @app.post("/tick", tags=["simulation"])
-async def tick() -> Dict[str, str]:
-    # TODO: Advance in-memory simulation: move robots along paths, update order/robot status
+async def tick(session: Session = Depends(get_session)) -> Dict[str, str]:
+    robot_paths = session.exec(select(RouteOrderLink)).all()
+    for path in robot_paths:
+        robot = session.exec(select(Robot).where(Robot.id == path.robot_id)).first()
+        order = session.exec(select(Order).where(Order.id == path.order_id)).first()
+        new_path = json.loads(path.route_json)[1:]  # simulate moving one step along path
+        robot.node = new_path[0]
+        if len(new_path) == 1:
+            order.status = OrderStatus.DONE
+            robot.status = RobotStatus.IDLE
+            session.delete(path)
+        else:
+            path.route_json = json.dumps(new_path)
+            path.distance = len(new_path)
+        session.add(robot)
+        session.add(order)
+        session.add(path)
+    session.commit()
     return {"status": "ok", "note": "tick advanced (no-op stub)"}
 
 
@@ -349,9 +368,4 @@ async def tick() -> Dict[str, str]:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-    )
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, )
