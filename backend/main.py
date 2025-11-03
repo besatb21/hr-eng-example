@@ -252,7 +252,7 @@ async def reset(session: Session = Depends(get_session)):
     return {"ok": True}
 
 
-@app.post("/addOrder", response_model=Order, tags=["orders"])
+@app.post("/addOrder", response_model=Order, tags=["orders"], description="Endpoint to add a new order")
 async def add_order(req: AddOrderRequest, session: Session = Depends(get_session)) -> Order:
     # Validate nodes exist in graph
     nodes = _graph_nodes_set()
@@ -272,24 +272,23 @@ async def add_order(req: AddOrderRequest, session: Session = Depends(get_session
     return db_order
 
 
-@app.get("/getOrders", response_model=List[RetrieveOrderRequest], tags=["orders"])
+@app.get("/getOrders", response_model=List[RetrieveOrderRequest], tags=["orders"], description="Endpoint returning all orders")
 async def get_orders(session: Session = Depends(get_session)):
     return session.exec(select(Order)).all()
 
 
-@app.get("/getRobots", response_model=List[RetrieveRobotRequest], tags=["robots"])
+@app.get("/getRobots", response_model=List[RetrieveRobotRequest], tags=["robots"], description="Endpoint returning all robots")
 async def get_robots(session: Session = Depends(get_session)):
     return session.exec(select(Robot)).all()
 
 
-@app.get("/getGraph", response_model=Graph, tags=["graph"])
+@app.get("/getGraph", response_model=Graph, tags=["graph"], description="Endpoint returning the graph")
 async def get_graph() -> Graph:
     return GRAPH
 
 
 @app.post("/assignNearestIdleRobot", tags=["scheduling"])
 async def assign_nearest_idle_robot(order: AssignOrderRequest, session: Session = Depends(get_session)):
-    # todo validate order exists
     assigned_order = session.exec(select(Order).where(Order.name == order.name)).first()
     if not assigned_order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -333,7 +332,7 @@ class RoutesResponse(BaseModel):
 
 
 # NOTE: These are *stubs* for stretch goals; they currently return empty data.
-@app.get("/routes", response_model=RoutesResponse, tags=["simulation"])
+@app.get("/routes", response_model=RoutesResponse, tags=["simulation"], description="Endpoint returning current robot routes")
 async def get_routes(session: SessionDep) -> RoutesResponse:
     stmt = (
         select(RouteOrderLink,Robot.name)
@@ -348,7 +347,7 @@ async def get_routes(session: SessionDep) -> RoutesResponse:
     return RoutesResponse(routes=response)
 
 
-@app.post("/tick", tags=["simulation"])
+@app.post("/tick", tags=["simulation"], description="Advance simulation by one tick (robots move along their paths)")
 async def tick(session: Session = Depends(get_session)) -> Dict[str, str]:
     robot_paths = session.exec(select(RouteOrderLink)).all()
     for path in robot_paths:
@@ -379,3 +378,10 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, )
+
+
+# todo fix the testing thing so that you write better tests
+
+# todo [] Charging logic: Add battery (0–100). Drain per tick; when <20%, send to nearest “charger” node; pause scheduling while charging; resume at >80%.
+
+# todo [] WebSocket/SSE: Push robot/ order updates instead of polling; keep /tick but notify subscribers.
