@@ -66,7 +66,7 @@ def get_session():
         yield session
 
 
-# todo
+# todo use this type alias in endpoint definitions
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
@@ -148,7 +148,8 @@ SEED_ORDERS = [Order(name="O-1001", source="B", target="D", status=OrderStatus.N
 app = FastAPI(title="AGV Scheduling Exercise API", version="0.1.0",
               description=("Minimal backend stubs for the AGV fleet scheduling exercise.\n\n"
                            "Endpoints provided: /addOrder, /getOrders, /getGraph, /getRobots.\n"
-                           "State is in-memory and resets on restart."), )
+                           "State is in-memory and resets on restart."),
+              )
 
 # CORS for local dev frontends (Vite/Next/CRA)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173",  # Vite default
@@ -229,9 +230,9 @@ def find_shortest_path(from_: str, to: str, graph: 'Graph') -> Tuple[float, List
 #     STATE["orders"] = list(SEED_ORDERS)
 #     STATE["robots"] = list(SEED_ROBOTS)
 
-@app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
+# @app.on_event("startup")
+# def on_startup():
+#     create_db_and_tables()
 
 
 # -----------------------------
@@ -333,9 +334,18 @@ class RoutesResponse(BaseModel):
 
 # NOTE: These are *stubs* for stretch goals; they currently return empty data.
 @app.get("/routes", response_model=RoutesResponse, tags=["simulation"])
-async def get_routes() -> RoutesResponse:
-    # TODO: Fill with planned paths once a scheduler is implemented server-side
-    return RoutesResponse(routes=[])
+async def get_routes(session: SessionDep) -> RoutesResponse:
+    stmt = (
+        select(RouteOrderLink,Robot.name)
+        .join(Robot , Robot.id == RouteOrderLink.robot_id)
+    )
+    results = session.exec(stmt).all()
+
+    response = [
+        Route(path=json.loads(link.route_json), robot=robot_name)
+        for link, robot_name in results
+    ]
+    return RoutesResponse(routes=response)
 
 
 @app.post("/tick", tags=["simulation"])

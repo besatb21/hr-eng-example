@@ -82,3 +82,10 @@ def test_tick(client: TestClient):
     assert response.status_code == 200
     assert data["status"] == "ok"
     assert data["note"] == "tick advanced (no-op stub)"
+
+def test_routes(client: TestClient):
+    response = client.get("/routes/")
+    data = response.json()
+
+    assert response.status_code == 200
+    assert data.__len__() == 1 # in the current db
