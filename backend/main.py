@@ -166,7 +166,7 @@ def _graph_nodes_set() -> set:
     return set(GRAPH.nodes)
 
 
-def seed_data(session: Session):
+def seed_data(session: SessionDep):
     """Insert sample data if the table is empty."""
     orders = SEED_ORDERS
     robots = SEED_ROBOTS
@@ -245,7 +245,7 @@ async def healthz():
 
 
 @app.get("/reset", tags=["simulation"])
-async def reset(session: Session = Depends(get_session)):
+async def reset(session: SessionDep):
     SQLModel.metadata.drop_all(bind=engine)
     SQLModel.metadata.create_all(bind=engine)
     seed_data(session=session)
@@ -253,7 +253,7 @@ async def reset(session: Session = Depends(get_session)):
 
 
 @app.post("/addOrder", response_model=Order, tags=["orders"], description="Endpoint to add a new order")
-async def add_order(req: AddOrderRequest, session: Session = Depends(get_session)) -> Order:
+async def add_order(req: AddOrderRequest, session: SessionDep) -> Order:
     # Validate nodes exist in graph
     nodes = _graph_nodes_set()
     if req.source not in nodes or req.target not in nodes:
@@ -273,12 +273,12 @@ async def add_order(req: AddOrderRequest, session: Session = Depends(get_session
 
 
 @app.get("/getOrders", response_model=List[RetrieveOrderRequest], tags=["orders"], description="Endpoint returning all orders")
-async def get_orders(session: Session = Depends(get_session)):
+async def get_orders(session: SessionDep):
     return session.exec(select(Order)).all()
 
 
 @app.get("/getRobots", response_model=List[RetrieveRobotRequest], tags=["robots"], description="Endpoint returning all robots")
-async def get_robots(session: Session = Depends(get_session)):
+async def get_robots(session: SessionDep):
     return session.exec(select(Robot)).all()
 
 
@@ -288,7 +288,7 @@ async def get_graph() -> Graph:
 
 
 @app.post("/assignNearestIdleRobot", tags=["scheduling"])
-async def assign_nearest_idle_robot(order: AssignOrderRequest, session: Session = Depends(get_session)):
+async def assign_nearest_idle_robot(order: AssignOrderRequest, session: SessionDep):
     assigned_order = session.exec(select(Order).where(Order.name == order.name)).first()
     if not assigned_order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -348,7 +348,7 @@ async def get_routes(session: SessionDep) -> RoutesResponse:
 
 
 @app.post("/tick", tags=["simulation"], description="Advance simulation by one tick (robots move along their paths)")
-async def tick(session: Session = Depends(get_session)) -> Dict[str, str]:
+async def tick(session: SessionDep) -> Dict[str, str]:
     robot_paths = session.exec(select(RouteOrderLink)).all()
     for path in robot_paths:
         robot = session.exec(select(Robot).where(Robot.id == path.robot_id)).first()
