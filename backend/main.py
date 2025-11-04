@@ -245,8 +245,8 @@ async def healthz():
 
 @app.get("/reset", tags=["simulation"])
 async def reset(session: SessionDep):
-    SQLModel.metadata.drop_all(bind=engine)
-    SQLModel.metadata.create_all(bind=engine)
+    SQLModel.metadata.drop_all(bind=session.bind)
+    SQLModel.metadata.create_all(bind=session.bind)
     seed_data(session=session)
     return {"ok": True}
 
