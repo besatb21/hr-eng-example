@@ -7,11 +7,8 @@ from .main import app, get_session
 
 # --- Create an in-memory database just for tests ---
 TEST_DATABASE_URL = "sqlite://"
-test_engine = create_engine(
-    TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
+test_engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool, )
+
 
 # --- Create tables only in the test engine ---
 @pytest.fixture(scope="session", autouse=True)
@@ -40,6 +37,7 @@ def client(session):
         yield c
     app.dependency_overrides.clear()
 
+
 def test_assign_nearest_idle_robot(client: TestClient, session: Session):
     response = client.post("/assignNearestIdleRobot/", json={"name": "O-1001", "source": "B"})
     data = response.json()
@@ -48,8 +46,8 @@ def test_assign_nearest_idle_robot(client: TestClient, session: Session):
     assert data["path"]
     assert data["robot_name"]
 
-#
-def test_no_idle_robot_available(client: TestClient, session:Session):
+
+def test_no_idle_robot_available(client: TestClient, session: Session):
     # Assign all robots to make them busy
     client.post("/assignNearestIdleRobot/", json={"name": "O-1001", "source": "B"})
     client.post("/addOrder/", json={"name": "testOrder2", "source": "D", "target": "A"})
@@ -64,7 +62,7 @@ def test_no_idle_robot_available(client: TestClient, session:Session):
     assert data["detail"] == "No idle robot available"
 
 
-def test_add_order(client: TestClient, session:Session):
+def test_add_order(client: TestClient, session: Session):
     response = client.post("/addOrder/", json={"name": "testOrder", "source": "A", "target": "C"})
     data = response.json()
 
@@ -85,11 +83,8 @@ def test_add_same_name_order(client: TestClient):
     assert data["detail"] == "Order with this name already exists"
 
 
-def test_tick(client: TestClient, session:Session):
-    request_body = {
-        "name": "O-1001",
-        "source": "B"
-    }
+def test_tick(client: TestClient, session: Session):
+    request_body = {"name": "O-1001", "source": "B"}
     client.post("/assignNearestIdleRobot/", json=request_body)
 
     response = client.post("/tick/")
@@ -100,9 +95,10 @@ def test_tick(client: TestClient, session:Session):
     assert data["status"] == "ok"
     assert data["note"] == "tick advanced (no-op stub)"
 
-def test_routes(client: TestClient, session:Session):
+
+def test_routes(client: TestClient, session: Session):
     response = client.get("/routes/")
     data = response.json()
 
     assert response.status_code == 200
-    assert data.__len__() == 1 # in the current db
+    assert data.__len__() == 1  # in the current db
