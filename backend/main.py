@@ -291,16 +291,14 @@ async def assign_nearest_idle_robot(order: AssignOrderRequest, session: SessionD
     assigned_order = session.exec(select(Order).where(Order.name == order.name)).first()
     if not assigned_order:
         raise HTTPException(status_code=404, detail="Order not found")
-    robots = list(session.exec(select(Robot)).all())
+    robots = list(session.exec(select(Robot).where(Robot.status==RobotStatus.IDLE)).all())
+    if not robots:
+        raise HTTPException(status_code=404, detail="No idle robot available")
 
     path_for_robot = []
     for robot in robots:
-        if robot.status == RobotStatus.IDLE:
-            distance, path = find_shortest_path(robot.node, order.source, GRAPH)
-            path_for_robot.append({"robot": robot, "distance": distance, "path": path})
-
-    if not path_for_robot:
-        raise HTTPException(status_code=404, detail="No idle robot available")
+        distance, path = find_shortest_path(robot.node, order.source, GRAPH)
+        path_for_robot.append({"robot": robot, "distance": distance, "path": path})
 
     resulting_path = sorted(path_for_robot, key=lambda x: (x["distance"], x["robot"].name))[0]
     chosen_robot, path = resulting_path["robot"], resulting_path["path"]
