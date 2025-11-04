@@ -49,16 +49,19 @@ def test_assign_nearest_idle_robot(client: TestClient, session: Session):
     assert data["robot_name"]
 
 #
-# def test_no_idle_robot_available(client: TestClient, session:Session):
-#     # Assign all robots to make them busy
-#     client.post("/assignNearestIdleRobot/", json={"name": "O-1001", "source": "B"})
-#     client.post("/addOrder/", json={"name": "testOrder2", "source": "A", "target": "C"})
-#     # Now try to assign another robot
-#     response = client.post("/assignNearestIdleRobot/", json={"name": "testOrder2", "source": "B"})
-#     data = response.json()
-#
-#     assert response.status_code == 404
-#     assert data["detail"] == "No idle robot available"
+def test_no_idle_robot_available(client: TestClient, session:Session):
+    # Assign all robots to make them busy
+    client.post("/assignNearestIdleRobot/", json={"name": "O-1001", "source": "B"})
+    client.post("/addOrder/", json={"name": "testOrder2", "source": "D", "target": "A"})
+    client.post("/assignNearestIdleRobot/", json={"name": "testOrder2", "source": "D"})
+
+    client.post("/addOrder/", json={"name": "testOrder3", "source": "A", "target": "E"})
+    # Now try to assign another robot
+    response = client.post("/assignNearestIdleRobot/", json={"name": "testOrder3", "source": "A"})
+    data = response.json()
+
+    assert response.status_code == 404
+    assert data["detail"] == "No idle robot available"
 
 
 def test_add_order(client: TestClient, session:Session):
@@ -87,7 +90,6 @@ def test_tick(client: TestClient, session:Session):
         "name": "O-1001",
         "source": "B"
     }
-    client.get("/reset")
     client.post("/assignNearestIdleRobot/", json=request_body)
 
     response = client.post("/tick/")
