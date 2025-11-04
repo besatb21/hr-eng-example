@@ -147,6 +147,7 @@ SEED_ORDERS = [Order(name="O-1001", source="B", target="D", status=OrderStatus.N
 app = FastAPI(title="AGV Scheduling Exercise API", version="0.1.0",
               description=("Minimal backend stubs for the AGV fleet scheduling exercise.\n\n"
                            "Endpoints provided: /addOrder, /getOrders, /getGraph, /getRobots.\n"
+                           "Added endpoints: /assignNearestIdleRobot, /reset, /tick, /routes, .\n\n"
                            "State is in-memory and resets on restart."),
               )
 
@@ -243,7 +244,7 @@ async def healthz():
     return {"ok": True}
 
 
-@app.get("/reset", tags=["simulation"])
+@app.get("/reset", tags=["simulation"], description="Reset the database to the initial seeded state")
 async def reset(session: SessionDep):
     SQLModel.metadata.drop_all(bind=session.bind)
     SQLModel.metadata.create_all(bind=session.bind)
@@ -286,7 +287,7 @@ async def get_graph() -> Graph:
     return GRAPH
 
 
-@app.post("/assignNearestIdleRobot", tags=["scheduling"])
+@app.post("/assignNearestIdleRobot", tags=["scheduling"], description="Assign the nearest idle robot to the given order")
 async def assign_nearest_idle_robot(order: AssignOrderRequest, session: SessionDep):
     assigned_order = session.exec(select(Order).where(Order.name == order.name)).first()
     if not assigned_order:
