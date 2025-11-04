@@ -96,6 +96,21 @@ def test_tick(client: TestClient, session: Session):
     assert data["note"] == "tick advanced (no-op stub)"
 
 
+def test_tick_order_done(client: TestClient, session: Session):
+    request_body = {"name": "O-1001", "source": "B"}
+    client.post("/assignNearestIdleRobot/", json=request_body)
+
+    # Simulate ticks until the order is done
+    for _ in range(2):
+        client.post("/tick/")
+
+    # Check the order status
+    response = client.get("/getOrders")
+    order_data = response.json()
+
+    assert response.status_code == 200
+    assert order_data[0]["status"] == "DONE"
+
 def test_routes(client: TestClient, session: Session):
     response = client.get("/routes/")
     data = response.json()
