@@ -107,6 +107,7 @@ class RetrieveOrderRequest(BaseModel):
     name: str
     source: str
     target: str
+    status: OrderStatus
 
     class Config:
         from_attributes = True
