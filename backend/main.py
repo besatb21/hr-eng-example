@@ -231,9 +231,9 @@ def find_shortest_path(from_: str, to: str, graph: 'Graph') -> Tuple[float, List
 #     STATE["orders"] = list(SEED_ORDERS)
 #     STATE["robots"] = list(SEED_ROBOTS)
 
-# @app.on_event("startup")
-# def on_startup():
-#     create_db_and_tables()
+@app.on_event("startup")
+def on_startup():
+    create_db_and_tables()
 
 
 # -----------------------------
