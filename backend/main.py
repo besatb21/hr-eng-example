@@ -66,7 +66,6 @@ def get_session():
         yield session
 
 
-# todo use this type alias in endpoint definitions
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
